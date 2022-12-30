@@ -1,14 +1,20 @@
-# tutor2
 # Import modules
-from pitop.pma import Button
+from pitop import Camera
+from further_link import send_image
+from pitop import Pitop
+from signal import pause
 
-# Set up the button on port D1 of the foundation plate
-button = Button("D5")
+#Create objects
+pitop = Pitop()
+select = pitop.miniscreen.select_button
+cam = Camera()
 
-# Loop until the button is pressed
-while not button.is_pressed:
-    pass
+#A function that takes a picture and sends it to Further
+def take_picture():
+  print('Say cheese!')
+  send_image(cam.get_frame())
 
-# Print to the console
-print("Button Pressed")
-  
+#The main program
+select.when_pressed = take_picture
+print('Press the select button (O) on the pi-top[4] to take a picture')
+pause()
