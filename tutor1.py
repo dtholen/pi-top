@@ -1,3 +1,14 @@
+# Import modules
+from pitop.pma import UltrasonicSensor,Buzzer, LED
+from time import sleep
+
+# Set up the components
+ultrasonic_sensor = UltrasonicSensor("D0")  # <- Fill in the port the Ultrasonic Sensor is connected to
+led_green = LED("D1")
+led_amber = LED("D2")
+led_red = LED("D3")                             # <- Fill in the port the LED is connected to
+buzzer = Buzzer("D4")
+# Loop, reading the value of the ultrasonic sensor
 while True:
     print(ultrasonic_sensor.distance)
     sleep(0.1)
