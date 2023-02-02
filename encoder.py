@@ -40,7 +40,10 @@ def stopWeel():
   motor_l.stop()
 
 def button_save():
+    global ePassword, eMail
     print("-->Speicher")
+    print(ePassword.get())
+    print(eMail.get())
 def close():
     fenster.destroy()
   
@@ -108,14 +111,17 @@ for arg in args:
       fenster.title('PythonGuides')
       fenster.geometry('400x300')
       fenster.config(bg='#9FD996')
-      lMail = Label(fenster, text='Enter Email:', bg='#9FD996').grid(row=0, column=0,sticky = W, pady = 2,rowspan=2)
-      lPassword = Label(fenster, text='Enter Password:', bg='#9FD996').grid(row=1, column=0,sticky = W, pady = 2,rowspan=2)
-      eMail= Entry(fenster).grid(row=0, column=1)
-      ePassword=Entry(fenster).grid(row=1, column=1)
+      lMail = Label(fenster, text='Enter Email:', bg='#9FD996').grid(row=0, column=0, pady = 2)
+      lPassword = Label(fenster, text='Enter Password:', bg='#9FD996').grid(row=1, column=0, pady = 2)
+      eMail = Entry(fenster).grid(row=0, column=1)
+      entry = Entry(fenster).grid(row=1, column=1)
+
       bCancel = Button(fenster,text='Cancel', command=close).grid(row=3, column=0)
       bSave = Button(fenster,text='Login', command=button_save).grid(row=3, column=1)
+ 
 
       fenster.mainloop()
+      print(entry.get())
       print("-->finish")
 
 
