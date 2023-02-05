@@ -5,11 +5,6 @@ from pitop.miniscreen import Miniscreen
 from pitop.pma import UltrasonicSensor,Buzzer, Button, LED
 
 signal = signal
-print("\n======= Signal - System Name ===================\n")
-
-# for signum in signal.valid_signals():
-#    print("{} - {}".format(signum, signal.strsignal(signum)))
-
 
 ultrasonic_sensor = UltrasonicSensor("D0", threshold_distance=0.3)
 args=sys.argv
@@ -33,19 +28,25 @@ speed = 50
 counter = [0,0,0]
 setCounter = [100,100,100]
 redLight = False
-alarm_set = False
 usr1_set = False
 usr1_time = 2
 tik = 10
 
-def thread_function(name):
-    logging.info("Thread %s: starting", name)
+def thread_servo(name):
+ #   logging.info("Thread %s: starting", name)
+    triggerServo()
     time.sleep(2)
-    logging.info("Thread %s: finishing", name)
-    signal.raise_signal(signal.SIGUSR1)
+#    logging.info("Thread %s: finishing", name)
+    thread_servo(name)
+
+def thread_measure(name):
+#    logging.info("Thread %s: starting", name)
+    measure()
+    time.sleep(0.2)
+#    logging.info("Thread %s: finishing", name)
+    thread_measure(name)
 
 def signal_handler(sig, frame):
-    global alarm_set
     signal_name = '(unknown)'
     if sig == signal.SIGHUP:
         signal_name = 'SIGHUP'
@@ -55,7 +56,6 @@ def signal_handler(sig, frame):
     elif sig == signal.SIGUSR2:
         signal_name = 'SIGUSR2'
     elif sig == signal.SIGALRM:
-        alarm_set = False
         signal_name = 'SIGALRM'
     print ('Received ', signal_name, 'signal')
 
@@ -66,6 +66,7 @@ def signal_handler(sig, frame):
         print("collision")
         collision(20,0.8)
     elif sig == signal.SIGUSR1:
+        print("Hi")
         triggerServo()
         print("scan 1")
     elif sig == signal.SIGUSR2:
@@ -73,7 +74,6 @@ def signal_handler(sig, frame):
         print("scan 2")
     elif sig == signal.SIGALRM:
         print("alarm")
-        alarm_set = False
 
     
     
@@ -92,15 +92,13 @@ signal.signal(signal.SIGALRM, signal_handler)
 
 #Move the servo using this is a function
 def triggerServo():
-  global sp
-  servo.sweep(sp)
-  sp = -sp
-  # Print to the console
-  print("Servo triggered with speed: " + str(sp))
+    global sp
+    servo.sweep(sp)
+    sp = -sp
+    # Print to the console
+    print("Servo triggered with speed: " + str(sp))
+    
 
-def triggerMesure():
-  measure()
-  servo.sweep(sp)
 
 #Move weel
 def moveWeel(speed):
@@ -126,7 +124,7 @@ def collision(speed, time):
 def measure():
     global readLight
     floatNumber=ultrasonic_sensor.distance
-    print("%.2f  " % floatNumber, alarm_set)
+    print("%.2f  " % floatNumber)
     sDistance  = " {:.2f}".format(floatNumber)
     miniscreen.display_multiline_text('Distance' + sDistance, font_size=20)
 
@@ -176,129 +174,28 @@ def close():
   
 
 repeat = True
+entry=args[1]
 print ('Hello there')
 
+print ('Mode F:',entry, repeat)
 
-for arg in args:
-    print ('Hello there', arg)
-    print ('Mode:',arg)
 
-for arg in args:
-    repeat = True
-    print ('Mode F:',arg, repeat)
-    i=1;
-    while not button.is_pressed and repeat:
-        repeat = False
-        if (arg== "1"):
-            print(__name__)
-            if __name__ == "__main__":
-                format = "%(asctime)s: %(message)s"
-                logging.basicConfig(format=format, level=logging.INFO,
-                                    datefmt="%H:%M:%S")
-                logging.info("Main    : before creating thread")
-                x = threading.Thread(target=thread_servo, args=(uuid.uuid4(),))
-                x.start()
-                logging.info("Main    : wait for the thread to finish")
-                y = threading.Thread(target=thread_measure, args=(uuid.uuid4(),))
-                y.start()
-                logging.info("Main    : all done")
+if (entry== "0"):
+    print("\n======= Signal - System Name ===================\n")
+    for signum in signal.valid_signals():
+        print("{} - {}".format(signum, signal.strsignal(signum)))
 
-            measure()
-            repeat = True
-            time.sleep(3)
-        if (arg== "2"):
-            print ('--> drive forward',speed)
-            moveWeel(speed)
-            time.sleep(1)
-        if (arg == "3"):
-            print ('--> drive backward',speed)
-            moveWeel(-speed)
-            time.sleep(1)
-        if (arg== "4"):
-            print ('--> turn r',speed)
-            turn(speed,1.0)
-        if (arg== "5"):
-            print ('--> turn l',speed)
-            turn(speed,-1.0)
-        if (arg== "6"):
-            print ('--> collision')
-            collision(20,0.8)
-        if (arg== "7"):
-            print ('--> collision')
-            collision(-20,0.8)
-        if (arg== "12"):
-            print ('--> move forward')
-            speed = int(input("Enter Speed : "))
-            duration = int(input("Enter duration (sec): "))
-            print("Speed:", speed)
-            moveWeel(int(speed))
-            time.sleep(duration)
-        if (arg== "13"):
-            print ('--> move backward')
-            speed = int(input("Enter Speed : "))
-            duration = int(input("Enter duration (sec): "))
-            print("Speed:", speed)
-            moveWeel(int(speed))
-            time.sleep(duration)
-        if (arg== "14"):
-            print ('--> turn r',speed)
-            speed = int(input("Enter Speed : "))
-            print ('--> turn l',-speed)
-            turn(-speed,1.0)
-        if (arg== "15"):
-            print ('--> turn l',speed)
-            speed = int(input("Enter Speed : "))
-            duration = int(input("Enter duration (sec): "))
-            print("Speed:", speed)
-            turn(-speed,duration)
-        if (arg== "20"):
-            print ('--> GUI')
-        # some JSON:
-            data =  '{ "speed":"", "duration":1}'
-            fenster = Tk()
-            fenster.title("Define parameters")
-            fenster.title('PythonGuides')
-            fenster.geometry('400x300')
-            fenster.config(bg='#9FD996')
-            lMail = Label(fenster, text='Enter Email:', bg='#9FD996').grid(row=0, column=0, pady = 2)
-            lPassword = Label(fenster, text='Enter Password:', bg='#9FD996').grid(row=1, column=0, pady = 2)
-            eMail = Entry(fenster).grid(row=0, column=1)
-            entry = Entry(fenster).grid(row=1, column=1)
+if (entry== "1"):
+    print(__name__)
+    format = "%(asctime)s: %(message)s"
+    logging.basicConfig(format=format, level=logging.INFO, datefmt="%H:%M:%S")
+    logging.info("Main    : wait for the thread to finish")
+    logging.info("Main    : all done")
+    x = threading.Thread(target=thread_servo, args=(uuid.uuid4(),))
+    x.start()
+    y = threading.Thread(target=thread_measure, args=(uuid.uuid4(),))
+    y.start()
 
-            bCancel = Button(fenster,text='Cancel', command=close).grid(row=3, column=0)
-            bSave = Button(fenster,text='Login', command=button_save).grid(row=3, column=1)
-        
-        if (arg== "21"):
-            # Trigger the servo when an object comes wicthin 30cm (the threshold distqnce).
-            ultrasonic_sensor.when_in_range = triggerServo
-            measure();
-            # signal.raise_signal(signal.SIGUSR1)
-            repeat = True
-            if not alarm_set:
-                print("set alarm !!! ")
-                signal.alarm(tik)
-                alarm_set = True;
-            time.sleep(2.0)
-
-        if (arg== "22"):
-            repeat = True
-            if not usr1_set:
-                print("set usr1!!! ")
-                signal.raise_signal(signal.SIGUSR1)
-                usr1_set = True
-            time.sleep(2.0)
-
-        if (arg== "30"):
-            measure()
-            print("check term:", redLight)
-            floatNumber=ultrasonic_sensor.distance
-            if floatNumber < 0.20:
-                stopWeel()
-                print("redLight")
-                collision(speed/2,1)
-                repeat = True
-            else:
-                repeat = True
-                moveWeel(speed)
-            time.sleep(0.2)
+  
+signal.pause()
 terminate()
