@@ -1,10 +1,15 @@
 # Import modules
-import sys, json
-from signal import pause
+import sys, json, signal, time, logging, threading, uuid
 from pitop import EncoderMotor, ServoMotor, ForwardDirection  # Motor control library
-from time import sleep  # Allows us to tell the program to wait
 from pitop.miniscreen import Miniscreen
 from pitop.pma import UltrasonicSensor,Buzzer, Button, LED
+
+signal = signal
+print("\n======= Signal - System Name ===================\n")
+
+# for signum in signal.valid_signals():
+#    print("{} - {}".format(signum, signal.strsignal(signum)))
+
 
 ultrasonic_sensor = UltrasonicSensor("D0", threshold_distance=0.3)
 args=sys.argv
@@ -28,6 +33,62 @@ speed = 50
 counter = [0,0,0]
 setCounter = [100,100,100]
 redLight = False
+alarm_set = False
+usr1_set = False
+usr1_time = 2
+tik = 10
+
+def thread_function(name):
+    logging.info("Thread %s: starting", name)
+    time.sleep(2)
+    logging.info("Thread %s: finishing", name)
+    signal.raise_signal(signal.SIGUSR1)
+
+def signal_handler(sig, frame):
+    global alarm_set
+    signal_name = '(unknown)'
+    if sig == signal.SIGHUP:
+        signal_name = 'SIGHUP'
+    elif sig == signal.SIGUSR1:
+        signal_name = 'SIGUSR1'
+        usr1_set = False
+    elif sig == signal.SIGUSR2:
+        signal_name = 'SIGUSR2'
+    elif sig == signal.SIGALRM:
+        alarm_set = False
+        signal_name = 'SIGALRM'
+    print ('Received ', signal_name, 'signal')
+
+
+    if sig == signal.SIGTERM or sig == signal.SIGINT :
+        sys.exit(0)
+    elif sig == signal.SIGHUP:
+        print("collision")
+        collision(20,0.8)
+    elif sig == signal.SIGUSR1:
+        triggerServo()
+        print("scan 1")
+    elif sig == signal.SIGUSR2:
+        measure()
+        print("scan 2")
+    elif sig == signal.SIGALRM:
+        print("alarm")
+        alarm_set = False
+
+    
+    
+
+def exit_handler(sig, frame):
+    print('Exiting....')
+    print("Signal Number:", sig)  
+    exit(0)
+
+signal.signal(signal.SIGINT, exit_handler)
+signal.signal(signal.SIGTERM, exit_handler)
+signal.signal(signal.SIGHUP, signal_handler)
+signal.signal(signal.SIGUSR1, signal_handler) # scan
+signal.signal(signal.SIGUSR2, signal_handler) # measure
+signal.signal(signal.SIGALRM, signal_handler)
 
 #Move the servo using this is a function
 def triggerServo():
@@ -36,6 +97,10 @@ def triggerServo():
   sp = -sp
   # Print to the console
   print("Servo triggered with speed: " + str(sp))
+
+def triggerMesure():
+  measure()
+  servo.sweep(sp)
 
 #Move weel
 def moveWeel(speed):
@@ -47,12 +112,12 @@ def turn(speed, time):
     print ("turn",speed, time)
     motor_r.set_target_rpm(speed)
     motor_l.set_target_rpm(speed)
-    sleep(time)
+    time.sleep(time)
     stopWeel()
 
 def collision(speed, time):
     moveWeel(-speed)
-    sleep(1)
+    time.sleep(1)
     stopWeel()
     turn(speed,time)
 
@@ -61,7 +126,7 @@ def collision(speed, time):
 def measure():
     global readLight
     floatNumber=ultrasonic_sensor.distance
-    print("%.2f" % floatNumber)
+    print("%.2f  " % floatNumber, alarm_set)
     sDistance  = " {:.2f}".format(floatNumber)
     miniscreen.display_multiline_text('Distance' + sDistance, font_size=20)
 
@@ -90,12 +155,12 @@ def terminate():
         led_red.on()
         led_amber.on()
         led_green.on()
-        sleep(0.5)
+        time.sleep(0.5)
         led_red.off()
         led_amber.off()
         led_green.off()
-        sleep(0.5)
-
+        time.sleep(0.5)
+    signal.signal(signal.SIGTERM, signal_handler)
 
 def stopWeel():
   motor_r.stop()
@@ -112,6 +177,8 @@ def close():
 
 repeat = True
 print ('Hello there')
+
+
 for arg in args:
     print ('Hello there', arg)
     print ('Mode:',arg)
@@ -119,20 +186,34 @@ for arg in args:
 for arg in args:
     repeat = True
     print ('Mode F:',arg, repeat)
+    i=1;
     while not button.is_pressed and repeat:
         repeat = False
         if (arg== "1"):
+            print(__name__)
+            if __name__ == "__main__":
+                format = "%(asctime)s: %(message)s"
+                logging.basicConfig(format=format, level=logging.INFO,
+                                    datefmt="%H:%M:%S")
+                logging.info("Main    : before creating thread")
+                x = threading.Thread(target=thread_servo, args=(uuid.uuid4(),))
+                x.start()
+                logging.info("Main    : wait for the thread to finish")
+                y = threading.Thread(target=thread_measure, args=(uuid.uuid4(),))
+                y.start()
+                logging.info("Main    : all done")
+
             measure()
             repeat = True
-            sleep(1)
+            time.sleep(3)
         if (arg== "2"):
             print ('--> drive forward',speed)
             moveWeel(speed)
-            sleep(1)
+            time.sleep(1)
         if (arg == "3"):
             print ('--> drive backward',speed)
             moveWeel(-speed)
-            sleep(1)
+            time.sleep(1)
         if (arg== "4"):
             print ('--> turn r',speed)
             turn(speed,1.0)
@@ -151,14 +232,14 @@ for arg in args:
             duration = int(input("Enter duration (sec): "))
             print("Speed:", speed)
             moveWeel(int(speed))
-            sleep(duration)
+            time.sleep(duration)
         if (arg== "13"):
             print ('--> move backward')
             speed = int(input("Enter Speed : "))
             duration = int(input("Enter duration (sec): "))
             print("Speed:", speed)
             moveWeel(int(speed))
-            sleep(duration)
+            time.sleep(duration)
         if (arg== "14"):
             print ('--> turn r',speed)
             speed = int(input("Enter Speed : "))
@@ -188,12 +269,24 @@ for arg in args:
             bSave = Button(fenster,text='Login', command=button_save).grid(row=3, column=1)
         
         if (arg== "21"):
-            print ('--> Servo test')
-            # Trigger the servo when an object comes within 30cm (the threshold distqnce).
+            # Trigger the servo when an object comes wicthin 30cm (the threshold distqnce).
             ultrasonic_sensor.when_in_range = triggerServo
-            pause()
+            measure();
+            # signal.raise_signal(signal.SIGUSR1)
+            repeat = True
+            if not alarm_set:
+                print("set alarm !!! ")
+                signal.alarm(tik)
+                alarm_set = True;
+            time.sleep(2.0)
 
-
+        if (arg== "22"):
+            repeat = True
+            if not usr1_set:
+                print("set usr1!!! ")
+                signal.raise_signal(signal.SIGUSR1)
+                usr1_set = True
+            time.sleep(2.0)
 
         if (arg== "30"):
             measure()
@@ -207,5 +300,5 @@ for arg in args:
             else:
                 repeat = True
                 moveWeel(speed)
-            sleep(0.2)
+            time.sleep(0.2)
 terminate()
