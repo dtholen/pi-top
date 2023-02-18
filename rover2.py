@@ -13,7 +13,7 @@ motor_r = EncoderMotor("M0", ForwardDirection.COUNTER_CLOCKWISE)
 motor_l = EncoderMotor("M1", ForwardDirection.COUNTER_CLOCKWISE)
 # Setup the servo on port S0 of the expansion plate
 servo = ServoMotor("S0")
-sp = 100 #sets servo speed and direction
+sp = 50 #sets servo speed and direction
 
 miniscreen = Miniscreen()
 led_green = LED("D1")
@@ -35,16 +35,20 @@ tik = 10
 def thread_servo(name):
  #   logging.info("Thread %s: starting", name)
     triggerServo()
-    time.sleep(2)
-#    logging.info("Thread %s: finishing", name)
-    thread_servo(name)
+    time.sleep(3.5)
+ #   logging.info("Thread %s: finishing", name)
+    x = threading.Thread(target=thread_servo, args=(uuid.uuid4(),))
+    x.start()
+    return(1)
 
 def thread_measure(name):
 #    logging.info("Thread %s: starting", name)
     measure()
-    time.sleep(0.2)
+    time.sleep(0.5)
 #    logging.info("Thread %s: finishing", name)
-    thread_measure(name)
+    y = threading.Thread(target=thread_measure, args=(uuid.uuid4(),))
+    y.start()
+    return(1)
 
 def signal_handler(sig, frame):
     signal_name = '(unknown)'
@@ -57,7 +61,9 @@ def signal_handler(sig, frame):
         signal_name = 'SIGUSR2'
     elif sig == signal.SIGALRM:
         signal_name = 'SIGALRM'
-    print ('Received ', signal_name, 'signal')
+    elif sig == signal.SIGPOLL:
+        signal_name = 'SIGPOLL'
+    print ('Received ', signal_name, sig)
 
 
     if sig == signal.SIGTERM or sig == signal.SIGINT :
@@ -74,11 +80,14 @@ def signal_handler(sig, frame):
         print("scan 2")
     elif sig == signal.SIGALRM:
         print("alarm")
+    elif sig == signal.SIGPOLL:
+        measure()
+        print("Mesure")
 
     
     
 
-def exit_handler(sig, frame):
+def exit_handler(sig):
     print('Exiting....')
     print("Signal Number:", sig)  
     exit(0)
